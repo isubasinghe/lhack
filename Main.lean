@@ -233,8 +233,42 @@ structure NonEmptyList (α : Type) : Type where
 
 def idahoSpiders : NonEmptyList String := {
   head := "Banded Garden Spider", 
-  tail := []
+  tail := [
+    "Long-legged Sac Spider", 
+    "Wolf Spider", 
+    "Hobo Spider", 
+    "Cat-faced Spider"
+  ]
 }
+
+
+#check 2 < 4
+
+/- #eval if (fun (x: Nat) => 1 + x) = (Nat.succ .) then "yes" else "no" -/
+
+
+inductive BinTree (α: Type) where 
+  | leaf : BinTree α 
+  | branch : BinTree α → α → BinTree α → BinTree α 
+
+def eqBinTree [BEq α] : BinTree α → BinTree α → Bool 
+  | BinTree.leaf, BinTree.leaf => true 
+  | BinTree.branch l x r, BinTree.branch l2 x2 r2 => 
+    x == x2 && eqBinTree l l2 && eqBinTree r r2 
+  | _, _ => false
+
+instance [BEq α] : BEq (BinTree α) where 
+  beq := eqBinTree
+
+def hashBinTree [Hashable α] : BinTree α -> UInt64 
+  | BinTree.leaf => 0 
+  | BinTree.branch left x right => 
+    mixHash 1 (mixHash (hashBinTree left) (mixHash (hash x) (hashBinTree right)))
+
+instance [Hashable α] : Hashable (BinTree α) where 
+  hash := hashBinTree
+
+deriving instance BEq, Hashable, Repr for NonEmptyList
 
 
 
