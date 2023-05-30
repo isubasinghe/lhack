@@ -270,5 +270,124 @@ instance [Hashable α] : Hashable (BinTree α) where
 
 deriving instance BEq, Hashable, Repr for NonEmptyList
 
+instance : Append (NonEmptyList α) where 
+  append xs ys := {head := xs.head, tail := xs.tail ++ ys.head :: ys.tail}
+
+
+#eval idahoSpiders ++ idahoSpiders
+
+
+
+instance : HAppend (NonEmptyList α) (List α) (NonEmptyList α) where 
+  hAppend xs ys := { head := xs.head, tail := xs.tail ++ ys}
+
+
+#eval idahoSpiders ++ ["Trapdoor Spider"]
+
+
+
+instance : Functor NonEmptyList where 
+  map f xs := {head := f xs.head, tail := f <$> xs.tail }
+
+def concat [Append α] (xs : NonEmptyList α) : α :=
+  let rec catList (start : α) : List α → α
+    | [] => start
+    | (z :: zs) => catList (start ++ z) zs
+  catList xs.head xs.tail
+
+
+
+#eval concat idahoSpiders
+
+
+class Coe' (α : Type) (β: Type) where 
+  coe : α → β 
+
+
+/- instance: Coe Pos Nat where 
+  coe x := x.toNat  -/
+
+  instance : Coe (NonEmptyList α) (List α) where
+  coe
+    | { head := x, tail := xs } => x :: xs
+
+
+instance : CoeDep (List α) (x :: xs) (NonEmptyList α) where
+  coe := { head := x, tail := xs }
+
+
+structure Monoid where 
+  Carrier: Type 
+  neutral : Carrier 
+  op: Carrier → Carrier → Carrier 
+
+
+def natMulMoinoid : Monoid := 
+  { Carrier := Nat, neutral := 1, op := (.*.)}
+
+def foldMap (M : Monoid) (f : α → M.Carrier) (xs : List α) : M.Carrier :=
+  let rec go (soFar : M.Carrier) : List α → M.Carrier
+    | [] => soFar
+    | y :: ys => go (M.op soFar (f y)) ys
+  go M.neutral xs
+
+
+def first (xs : List α) : Option α := 
+  xs[0]?
+
+def firstThird (xs : List α) : Option (α × α) := 
+  match xs[0]? with 
+  | none => none 
+  | some first => 
+    match xs[2]? with 
+    | none => none 
+    | some third => 
+      some (first, third)
+/- Fairly unwieldy already -/ 
+
+def andThen (opt : Option α) (next : α → Option β) : Option β := 
+  match opt with 
+  | none => none 
+  | some x => next x
+
+def firstThird' (xs: List α) : Option (α × α) := 
+  andThen xs[0]? fun first => 
+  andThen xs[2]? fun third => 
+  some (first, third)
+
+
+inductive Except' (ε : Type) (α : Type) where 
+  | error' : ε → Except' ε α 
+  | ok' : α → Except' ε α 
+
+def get(xs : List α) (i : Nat) : Except String α := 
+  match xs[i]? with 
+  | none => Except.error ""
+  | some x => Except.ok x
+
+
+class Monad' (m : Type → Type) where 
+  pure' : α → m α 
+  bind' : m α → (α → m β) → m β 
+
+
+structure WithLog (logged : Type) (α : Type) where 
+  log : List logged 
+  val : α 
+
+
+def save (data : α) : WithLog α Unit := 
+  { log := [data], val := () }
+
+
+
+
+
+instance : Monad (WithLog logged) where
+  pure x := {log := [], val := x}
+  bind result next :=
+    let {log := thisOut, val := thisRes} := result
+    let {log := nextOut, val := nextRes} := next thisRes
+    {log := thisOut ++ nextOut, val := nextRes}
 
 
